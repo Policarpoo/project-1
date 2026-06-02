@@ -1,1 +1,392 @@
 
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lista de Alunos</title>
+
+  <style>
+    *{
+      margin:0;
+      padding:0;
+      box-sizing:border-box;
+    }
+
+    body{
+      font-family: Arial, Helvetica, sans-serif;
+      background:#f4f7fb;
+      color:#1f2937;
+      min-height:100vh;
+      display:flex;
+      justify-content:center;
+      padding:40px 16px;
+    }
+
+    .container{
+      width:100%;
+      max-width:700px;
+      background:#ffffff;
+      border-radius:18px;
+      padding:28px;
+      box-shadow:0 10px 30px rgba(0,0,0,0.08);
+    }
+
+    h1{
+      font-size:28px;
+      margin-bottom:8px;
+      color:#111827;
+    }
+
+    .subtitle{
+      color:#6b7280;
+      margin-bottom:28px;
+    }
+
+    .form{
+      display:flex;
+      gap:12px;
+      margin-bottom:24px;
+    }
+
+    .form input{
+      flex:1;
+      padding:14px 16px;
+      border:1px solid #d1d5db;
+      border-radius:12px;
+      font-size:16px;
+      outline:none;
+      transition:0.2s;
+    }
+
+    .form input:focus{
+      border-color:#2563eb;
+      box-shadow:0 0 0 4px rgba(37,99,235,0.12);
+    }
+
+    .form button{
+      padding:14px 22px;
+      border:none;
+      border-radius:12px;
+      background:#2563eb;
+      color:#fff;
+      font-size:16px;
+      cursor:pointer;
+      transition:0.2s;
+      font-weight:bold;
+    }
+
+    .form button:hover{
+      background:#1d4ed8;
+    }
+
+    .message{
+      margin-bottom:18px;
+      min-height:20px;
+      font-size:14px;
+      font-weight:bold;
+    }
+
+    .success{
+      color:#059669;
+    }
+
+    .error{
+      color:#dc2626;
+    }
+
+    .list-container{
+      border:1px solid #e5e7eb;
+      border-radius:14px;
+      overflow:hidden;
+    }
+
+    .list-header{
+      background:#111827;
+      color:#fff;
+      padding:14px 18px;
+      font-weight:bold;
+      display:flex;
+      justify-content:space-between;
+    }
+
+    ul{
+      list-style:none;
+    }
+
+    li{
+      padding:14px 18px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      font-size:15px;
+    }
+
+    li:nth-child(odd){
+      background:#f9fafb;
+    }
+
+    li:nth-child(even){
+      background:#ffffff;
+    }
+
+    .empty{
+      padding:22px;
+      text-align:center;
+      color:#6b7280;
+    }
+
+    .badge{
+      background:#dbeafe;
+      color:#1d4ed8;
+      padding:4px 10px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:bold;
+    }
+
+    .loading{
+      text-align:center;
+      padding:20px;
+      color:#6b7280;
+    }
+
+    @media(max-width:600px){
+      .form{
+        flex-direction:column;
+      }
+
+      .form button{
+        width:100%;
+      }
+
+      h1{
+        font-size:24px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>Lista de Alunos</h1>
+    <div class="subtitle">
+      Cadastro integrado com Google Planilhas + Apps Script
+    </div>
+
+    <div class="form">
+      <input
+        type="text"
+        id="studentName"
+        placeholder="Digite o nome do aluno"
+      />
+
+      <button id="saveBtn">
+        Salvar
+      </button>
+    </div>
+
+    <div id="message" class="message"></div>
+
+    <div class="list-container">
+      <div class="list-header">
+        <span>Alunos</span>
+        <span id="totalBadge" class="badge">0</span>
+      </div>
+
+      <div id="studentsContent">
+        <div class="loading">Carregando...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /*
+    =====================================================
+    CONFIGURAÇÃO
+    =====================================================
+
+    Cole aqui a URL do Web App do Google Apps Script.
+
+    Exemplo:
+    https://script.google.com/macros/s/AKfycbxxxxxxxxxxxxxxxx/exec
+    */
+
+    const CONFIG = {
+      WEB_APP_URL: "COLE_AQUI_A_URL_DO_WEB_APP"
+    };
+
+    const studentInput = document.getElementById("studentName");
+    const saveBtn = document.getElementById("saveBtn");
+    const studentsContent = document.getElementById("studentsContent");
+    const totalBadge = document.getElementById("totalBadge");
+    const messageBox = document.getElementById("message");
+
+    /*
+    =====================================================
+    JSONP
+    =====================================================
+    Solução compatível com GitHub Pages sem problemas de CORS.
+    */
+
+    function jsonpRequest(url) {
+      return new Promise((resolve, reject) => {
+
+        const callbackName =
+          "jsonp_callback_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
+
+        window[callbackName] = function(data) {
+          resolve(data);
+
+          delete window[callbackName];
+
+          if (script.parentNode) {
+            script.parentNode.removeChild(script);
+          }
+        };
+
+        const script = document.createElement("script");
+
+        script.src =
+          url +
+          (url.includes("?") ? "&" : "?") +
+          "callback=" +
+          callbackName;
+
+        script.onerror = function() {
+          reject(new Error("Erro na requisição JSONP"));
+
+          delete window[callbackName];
+
+          if (script.parentNode) {
+            script.parentNode.removeChild(script);
+          }
+        };
+
+        document.body.appendChild(script);
+      });
+    }
+
+    function showMessage(text, type = "success") {
+      messageBox.textContent = text;
+      messageBox.className = "message " + type;
+
+      setTimeout(() => {
+        messageBox.textContent = "";
+        messageBox.className = "message";
+      }, 3000);
+    }
+
+    async function loadStudents() {
+      try {
+
+        const url =
+          CONFIG.WEB_APP_URL +
+          "?action=list";
+
+        const response = await jsonpRequest(url);
+
+        if (!response.success) {
+          throw new Error(response.message || "Erro ao carregar");
+        }
+
+        renderStudents(response.students);
+
+      } catch (error) {
+        console.error(error);
+
+        studentsContent.innerHTML = `
+          <div class="empty">
+            Erro ao carregar alunos.
+          </div>
+        `;
+      }
+    }
+
+    function renderStudents(students) {
+
+      totalBadge.textContent = students.length;
+
+      if (!students.length) {
+        studentsContent.innerHTML = `
+          <div class="empty">
+            Nenhum aluno cadastrado.
+          </div>
+        `;
+        return;
+      }
+
+      const html = `
+        <ul>
+          ${students.map(student => `
+            <li>
+              <span>${escapeHtml(student.nome)}</span>
+              <span class="badge">#${student.id}</span>
+            </li>
+          `).join("")}
+        </ul>
+      `;
+
+      studentsContent.innerHTML = html;
+    }
+
+    async function addStudent() {
+
+      const name = studentInput.value.trim();
+
+      if (!name) {
+        showMessage("Digite um nome.", "error");
+        studentInput.focus();
+        return;
+      }
+
+      saveBtn.disabled = true;
+      saveBtn.textContent = "Salvando...";
+
+      try {
+
+        const url =
+          CONFIG.WEB_APP_URL +
+          "?action=add&name=" +
+          encodeURIComponent(name);
+
+        const response = await jsonpRequest(url);
+
+        if (!response.success) {
+          throw new Error(response.message || "Erro ao salvar");
+        }
+
+        studentInput.value = "";
+
+        showMessage("Aluno salvo com sucesso!");
+
+        renderStudents(response.students);
+
+      } catch (error) {
+        console.error(error);
+        showMessage("Erro ao salvar aluno.", "error");
+      }
+
+      saveBtn.disabled = false;
+      saveBtn.textContent = "Salvar";
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.innerText = text;
+      return div.innerHTML;
+    }
+
+    saveBtn.addEventListener("click", addStudent);
+
+    studentInput.addEventListener("keydown", function(e){
+      if (e.key === "Enter") {
+        addStudent();
+      }
+    });
+
+    loadStudents();
+  </script>
+
+</body>
+</html>
